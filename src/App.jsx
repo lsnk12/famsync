@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import { Plus, Clock, Settings, Bell, Users, RefreshCw, ChevronLeft, ChevronRight, UserPlus, Calendar as CalendarIcon, CheckCircle, Trash2, Edit3, Share2, MapPin, Download } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 const INITIAL_MEMBERS = [
   { id: '1', name: 'Mom', role: 'Parent', color: 'bg-rose-500', lightColor: 'bg-rose-100', text: 'text-rose-700' },
@@ -307,7 +308,6 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
       <div className="flex-1 overflow-auto bg-slate-50 relative">
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-30 shadow-sm">
-            {/* Slim sidebar on mobile, full width on desktop */}
             <div className="w-20 sm:w-56 flex-none sticky left-0 z-40 bg-slate-50 border-r border-slate-200 p-2 sm:p-4"></div>
             <div className="flex relative py-2" style={{ width: `${(END_HOUR - START_HOUR + 1) * HOUR_WIDTH}px` }}>
               {hours.map(hour => (
@@ -322,7 +322,6 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
           <div className="relative">
             {members.map(member => (
               <div key={member.id} className="flex border-b border-slate-200 hover:bg-slate-100 transition-colors min-h-[90px] sm:min-h-[120px] group">
-                {/* Mobile avatar, Desktop full row */}
                 <div className="w-20 sm:w-56 flex-none sticky left-0 z-20 bg-white/95 backdrop-blur-md border-r border-slate-200 p-2 sm:p-4 flex items-center justify-between shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                   <div className="flex items-center space-x-2 sm:space-x-3">
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm flex-none ${member.color}`}>
@@ -402,7 +401,6 @@ const MonthView = ({ currentDate, events, members, onSelectDay }) => {
                 {dayEvents.length > 0 && <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{dayEvents.length} events</span>}
               </div>
 
-              {/* Desktop Full Title View */}
               <div className="hidden sm:block space-y-1 mt-2">
                 {dayEvents.slice(0, 2).map((evt, idx) => {
                   if (!evt) return null;
@@ -418,7 +416,6 @@ const MonthView = ({ currentDate, events, members, onSelectDay }) => {
                 {dayEvents.length > 2 && <p className="text-[10px] text-slate-400 font-semibold text-right">+{dayEvents.length - 2} more</p>}
               </div>
 
-              {/* Mobile Dots View */}
               <div className="flex sm:hidden flex-wrap gap-1 justify-center mt-1">
                 {dayEvents.slice(0, 4).map((evt, idx) => {
                   if (!evt) return null;
@@ -461,10 +458,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
   });
 
-  const [events, setEvents] = useState(() => {
-    const saved = localStorage.getItem('famsync-events');
-    return saved ? JSON.parse(saved) : INITIAL_EVENTS;
-  });
+  const [events, setEvents] = useState(INITIAL_EVENTS);
 
   const [calendars, setCalendars] = useState(() => {
     const saved = localStorage.getItem('famsync-calendars');
@@ -477,12 +471,34 @@ export default function App() {
   const [shareModalEvent, setShareModalEvent] = useState(null);
   const [editModalEvent, setEditModalEvent] = useState(null);
 
+  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const { data, error } = await supabase.from('events').select('*');
+      if (data && data.length > 0) {
+        setEvents(data);
+      }
+    };
+
+    fetchEvents();
+
+    const channel = supabase
+      .channel('realtime-events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        fetchEvents();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const safeEvents = Array.isArray(events) ? events : [];
   const dayEvents = safeEvents.filter(e => e && e.date === currentDate);
   const freeTime = findFamilyFreeTime(dayEvents);
 
   useEffect(() => { localStorage.setItem('famsync-members', JSON.stringify(members)); }, [members]);
-  useEffect(() => { localStorage.setItem('famsync-events', JSON.stringify(events)); }, [events]);
   useEffect(() => { localStorage.setItem('famsync-calendars', JSON.stringify(calendars)); }, [calendars]);
 
   const adjustDate = (daysToAdd) => {
@@ -499,12 +515,13 @@ export default function App() {
       { id: `sync1-${newCalId}`, memberId, title: 'Synced Meeting', date: currentDate, start: 10.5, duration: 1, location: url },
       { id: `sync2-${newCalId}`, memberId, title: 'Imported Event', date: currentDate, start: 14, duration: 2, location: url }
     ];
-    setEvents(prev => [...prev, ...mockEvents]);
+    
+    mockEvents.forEach(evt => handleCreateEvent(evt));
   };
 
   const handleDeleteCalendar = (id) => {
     setCalendars(prev => prev.filter(c => c.id !== id));
-    setEvents(prev => prev.filter(e => !e.id.includes(id)));
+    events.filter(e => e.id.includes(id)).forEach(e => handleDeleteEvent(e.id));
   };
   
   const handleRefreshCalendar = (id) => {
@@ -514,21 +531,38 @@ export default function App() {
   const handleAddMember = (name, role, selectedColor) => {
     setMembers(prev => [...prev, { id: Date.now().toString(), name, role, ...selectedColor }]);
   };
+  
   const handleDeleteMember = (memberId) => {
     setMembers(prev => prev.filter(m => m && m.id !== memberId));
-    setEvents(prev => prev.filter(e => e && e.memberId !== memberId));
+    events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
   };
-  const handleCreateEvent = (newEvent) => {
-    setEvents(prev => [...prev, { ...newEvent, id: `e-${Date.now()}` }]);
+
+  const handleCreateEvent = async (newEvent) => {
+    const eventToSave = { ...newEvent, id: newEvent.id || `e-${Date.now()}` };
+    setEvents(prev => [...prev, eventToSave]);
+    await supabase.from('events').insert([eventToSave]);
   };
-  const handleMoveEvent = (eventId, targetMemberId, newStart) => {
-    setEvents(prev => prev.map(e => e && e.id === eventId ? { ...e, memberId: targetMemberId, start: newStart } : e));
+
+  const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
+    const updated = { ...events.find(e => e.id === eventId), memberId: targetMemberId, start: newStart };
+    setEvents(prev => prev.map(e => e && e.id === eventId ? updated : e));
+    await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
-  const handleSaveEvent = (updatedEvent) => setEvents(prev => prev.map(e => e && e.id === updatedEvent.id ? updatedEvent : e));
-  const handleDeleteEvent = (eventId) => setEvents(prev => prev.filter(e => e && e.id !== eventId));
-  const handleShareEvent = (event, targetMemberIds) => {
+
+  const handleSaveEvent = async (updatedEvent) => {
+    setEvents(prev => prev.map(e => e && e.id === updatedEvent.id ? updatedEvent : e));
+    await supabase.from('events').update(updatedEvent).eq('id', updatedEvent.id);
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    setEvents(prev => prev.filter(e => e && e.id !== eventId));
+    await supabase.from('events').delete().eq('id', eventId);
+  };
+
+  const handleShareEvent = async (event, targetMemberIds) => {
     const newEvents = targetMemberIds.map(mId => ({ ...event, id: `e-${Date.now()}-${mId}`, memberId: mId }));
     setEvents(prev => [...prev, ...newEvents]);
+    await supabase.from('events').insert(newEvents);
   };
 
   const handleDaySelect = (dateStr) => {
@@ -563,7 +597,6 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Mobile nav bar */}
       <div className="sm:hidden flex bg-white border-b border-slate-200 p-2 justify-around sticky top-[65px] z-30 shadow-sm">
          <button onClick={() => setViewMode('day')} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'day' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500'}`}>Day</button>
          <button onClick={() => setViewMode('month')} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'month' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500'}`}>Month</button>
