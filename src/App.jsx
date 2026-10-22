@@ -315,7 +315,7 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
       <div className="flex-1 overflow-auto bg-slate-50 relative">
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-30 shadow-sm">
-            <div className="w-20 sm:w-56 flex-none sticky left-0 z-40 bg-slate-50 border-r border-slate-200 p-2 sm:p-4"></div>
+            <div className="w-28 sm:w-56 flex-none sticky left-0 z-40 bg-slate-50 border-r border-slate-200 p-2 sm:p-4"></div>
             <div className="flex relative py-2" style={{ width: `${(END_HOUR - START_HOUR + 1) * HOUR_WIDTH}px` }}>
               {hours.map(hour => (
                 <div key={hour} className="flex-none flex flex-col items-start px-2" style={{ width: `${HOUR_WIDTH}px` }}>
@@ -325,7 +325,7 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
               ))}
             </div>
           </div>
-
+          
           <div className="relative">
             {members.map(member => (
               <div key={member.id} className="flex border-b border-slate-200 hover:bg-slate-100 transition-colors min-h-[90px] sm:min-h-[120px] group">
