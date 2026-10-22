@@ -538,14 +538,25 @@ export default function App() {
     setCalendars(prev => prev.map(c => c.id === id ? { ...c, lastSynced: 'Just now' } : c));
   };
 
-  const handleAddMember = (name, role, selectedColor) => {
-    setMembers(prev => [...prev, { id: Date.now().toString(), name, role, ...selectedColor }]);
-  };
+  const handleAddMember = async (name, role, selectedColor) => {
+  // 1. Package the exact new member data
+  const newMember = { id: Date.now().toString(), name, role, ...selectedColor };
   
-  const handleDeleteMember = (memberId) => {
-    setMembers(prev => prev.filter(m => m && m.id !== memberId));
-    events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
-  };
+  // 2. Update the local screen instantly
+  setMembers(prev => [...prev, newMember]);
+  
+  // 3. Save it straight to the Supabase cloud
+  await supabase.from('members').insert([newMember]);
+};
+
+const handleDeleteMember = async (memberId) => {
+  // 1. Remove from local screen (including linked events)
+  setMembers(prev => prev.filter(m => m && m.id !== memberId));
+  events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
+  
+  // 2. Delete from the Supabase cloud
+  await supabase.from('members').delete().eq('id', memberId);
+};
 
   const handleCreateEvent = async (newEvent) => {
     const eventToSave = { ...newEvent, id: newEvent.id || `e-${Date.now()}` };
