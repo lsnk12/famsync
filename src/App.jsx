@@ -355,8 +355,8 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
                         <div className="flex flex-col h-full justify-between">
                           <div className="flex justify-between items-start">
                             <div className="overflow-hidden">
-                              <h4 className="font-bold text-xs sm:text-sm whitespace-normal break-words leading-tight drop-shadow-sm">{event.title}</h4>
-<p className="text-[10px] sm:text-xs opacity-90 mt-0.5 font-medium">{formatTime(event.start)} - {formatTime(event.start + event.duration)}</p>
+                             <h4 className="font-bold text-xs sm:text-sm whitespace-normal break-words leading-tight drop-shadow-sm line-clamp-2">{event.title}</h4>
+<p className="text-[10px] sm:text-xs opacity-90 mt-0.5 font-medium whitespace-nowrap truncate">{formatTime(event.start)} - {formatTime(event.start + event.duration)}</p>
                             </div>
                             <div className="hidden sm:flex items-center space-x-1 opacity-0 group-hover/card:opacity-100 transition-opacity ml-1 bg-black/10 rounded-lg p-0.5 backdrop-blur-sm">
                               <button onClick={(e) => { e.stopPropagation(); onOpenEdit(event); }} title="Edit Event" className="p-1.5 hover:bg-white/20 rounded-md transition-colors"><Edit3 size={12} /></button>
