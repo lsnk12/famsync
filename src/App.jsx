@@ -714,16 +714,13 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
       </div>
 
       <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto w-full flex flex-col gap-4 sm:gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 sm:p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
-            <div className="relative z-10">
-              <div className="flex items-center space-x-2 mb-2"><Clock size={18} /><h3 className="font-semibold text-xs sm:text-sm">Family Free Time</h3></div>
-              {freeTime ? (<div><h2 className="text-2xl sm:text-3xl font-black mb-1">{formatTime(freeTime.start)} - {formatTime(freeTime.end)}</h2><p className="text-indigo-100 text-xs sm:text-sm">Everyone is clear for {freeTime.duration} hours on {displayDate}.</p></div>) : (<h2 className="text-lg sm:text-xl font-bold">No overlapping free time today.</h2>)}
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-slate-500 text-xs sm:text-sm mb-1">Day Overview</h3>
+            <div className="flex items-baseline space-x-2">
+              <span className="text-3xl sm:text-4xl font-black text-slate-800">{dayEvents.length}</span>
+              <span className="text-slate-500 font-medium text-xs sm:text-sm">Total Events on {displayDate}</span>
             </div>
-          </div>
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div><h3 className="font-semibold text-slate-500 text-xs sm:text-sm mb-2 sm:mb-4">Day Overview</h3><div className="flex items-end"><span className="text-3xl sm:text-4xl font-black text-slate-800">{dayEvents.length}</span><span className="text-slate-500 font-medium text-xs sm:text-sm ml-2 mb-1">Total Events on {displayDate}</span></div></div>
           </div>
         </div>
 
@@ -740,7 +737,6 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
           {viewMode === 'year' && <YearView onSelectMonth={() => setViewMode('month')} />}
         </div>
       </main>
-
       <SyncModal isOpen={syncModalOpen} onClose={() => setSyncModalOpen(false)} members={members} calendars={calendars} onAddCalendar={handleAddCalendar} onDeleteCalendar={handleDeleteCalendar} onRefreshCalendar={handleRefreshCalendar} />
       <AddMemberModal isOpen={addMemberOpen} onClose={() => setAddMemberOpen(false)} onAddMember={handleAddMember} />
       <AddEventModal isOpen={addEventOpen} onClose={() => setAddEventOpen(false)} members={members} currentDate={currentDate} onCreateEvent={handleCreateEvent} />
