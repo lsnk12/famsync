@@ -325,7 +325,6 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
               ))}
             </div>
           </div>
-          git add .
           <div className="relative">
             {members.map(member => (
               <div key={member.id} className="flex border-b border-slate-200 hover:bg-slate-100 transition-colors min-h-[90px] sm:min-h-[120px] group">
