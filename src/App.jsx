@@ -558,10 +558,17 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
   useEffect(() => { localStorage.setItem('famsync-members', JSON.stringify(members)); }, [members]);
   useEffect(() => { localStorage.setItem('famsync-calendars', JSON.stringify(calendars)); }, [calendars]);
 
-  const adjustDate = (daysToAdd) => {
-    const dateObj = new Date(currentDate + 'T12:00:00'); 
-    dateObj.setDate(dateObj.getDate() + daysToAdd);
-    setCurrentDate(dateObj.toISOString().split('T')[0]);
+  const adjustDate = (offset) => {
+    const date = new Date(currentDate + 'T12:00:00');
+    if (viewMode === 'day') {
+      date.setDate(date.getDate() + offset);
+    } else if (viewMode === 'month') {
+      date.setMonth(date.getMonth() + offset);
+      date.setDate(1); 
+    } else if (viewMode === 'year') {
+      date.setFullYear(date.getFullYear() + offset);
+    }
+    setCurrentDate(date.toISOString().split('T')[0]);
   };
 
 const handleAddCalendar = async (url, memberId) => {
