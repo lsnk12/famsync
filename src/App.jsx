@@ -285,6 +285,17 @@ const SyncModal = ({ isOpen, onClose, members, calendars, onAddCalendar, onDelet
 };
 const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, onOpenEdit }) => {
   const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => i + START_HOUR);
+  const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const currentHour = new Date().getHours();
+      if (currentHour >= START_HOUR && currentHour <= END_HOUR) {
+        const scrollPos = (currentHour - START_HOUR) * HOUR_WIDTH;
+        scrollContainerRef.current.scrollLeft = scrollPos - 40; 
+      }
+    }
+  }, []);
 
   const handleDragStart = (e, event) => {
     e.dataTransfer.setData('text/plain', event.id);
@@ -312,7 +323,7 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[450px]">
-      <div className="flex-1 overflow-auto bg-slate-50 relative">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-slate-50 relative">
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-30 shadow-sm">
             <div className="w-28 sm:w-56 flex-none sticky left-0 z-40 bg-slate-50 border-r border-slate-200 p-2 sm:p-4"></div>
@@ -344,7 +355,6 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
                   <div className="absolute inset-0 flex pointer-events-none opacity-20">
                     {hours.map(h => <div key={`grid-${h}`} className="h-full border-l border-slate-400 border-dashed" style={{ width: `${HOUR_WIDTH}px` }} />)}
                   </div>
-
                   {events.filter(e => e && e.memberId === member.id).map(event => {
                     const leftPos = (event.start - START_HOUR) * HOUR_WIDTH;
                     const width = event.duration * HOUR_WIDTH;
