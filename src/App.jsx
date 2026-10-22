@@ -526,39 +526,23 @@ export default function App() {
 
 const handleAddCalendar = async (url, memberId) => {
     try {
-      // 1. Format URL
-      const httpsUrl = url.replace('webcal://', 'https://').replace('webcals://', 'https://');
+      // 1. Fetch .ics data via your serverless backend proxy
+      const response = await fetch(`/api/ical-proxy?url=${encodeURIComponent(url)}`);
       
-      let icsData = '';
-
-      // 2. Try Primary Proxy: AllOrigins JSON wrapper
-      try {
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(httpsUrl)}`;
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.contents) icsData = data.contents;
-        }
-      } catch (e) {
-        console.warn("AllOrigins failed, trying backup proxy...");
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
       }
 
-      // 3. Fallback Proxy if primary fails or returns empty
-      if (!icsData) {
-        const backupProxyUrl = `https://corsproxy.io/?${encodeURIComponent(httpsUrl)}`;
-        const response = await fetch(backupProxyUrl);
-        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-        icsData = await response.text();
-      }
+      const icsData = await response.text();
 
-      // 4. Parse iCal data
+      // 2. Parse iCal data using ical.js
       const jcalData = ICAL.parse(icsData);
       const comp = new ICAL.Component(jcalData);
       const vevents = comp.getAllSubcomponents('vevent');
       
       const newCalId = Date.now().toString();
 
-      // 5. Transform data to match Supabase columns
+      // 3. Map events to schema
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         const startDate = event.startDate ? event.startDate.toJSDate() : new Date();
@@ -575,10 +559,10 @@ const handleAddCalendar = async (url, memberId) => {
         };
       });
 
-      // 6. Save to Supabase
+      // 4. Save to Supabase database
       await supabase.from('events').insert(newEvents);
       
-      // 7. Add to Imported Calendars list in modal
+      // 5. Update UI state
       const calName = comp.getFirstPropertyValue('x-wr-calname') || url;
       setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId, lastSynced: 'Just now' }]);
       
@@ -587,11 +571,10 @@ const handleAddCalendar = async (url, memberId) => {
       
     } catch (error) {
       console.error("Calendar import failed:", error);
-      alert("Could not import calendar. Please verify the iCloud link is public.");
+      alert("Could not import calendar. Ensure the iCloud link is public.");
       return false;
     }
   };
-
   const handleDeleteCalendar = (id) => {
     setCalendars(prev => prev.filter(c => c.id !== id));
     events.filter(e => e.id.includes(id)).forEach(e => handleDeleteEvent(e.id));
