@@ -227,12 +227,17 @@ const SyncModal = ({ isOpen, onClose, members, calendars, onAddCalendar, onDelet
 
   if (!isOpen) return null;
 
-  const handleImport = (e) => {
-    e.preventDefault();
-    if (!newUrl.trim() || !memberId) return;
-    setImporting(true);
-    setTimeout(() => { onAddCalendar(newUrl.trim(), memberId); setNewUrl(''); setImporting(false); }, 1000);
-  };
+ const handleImport = async (e) => {
+  e.preventDefault();
+  if (!newUrl.trim() || !memberId) return;
+  setImporting(true);
+  
+  // Wait for the real download to finish
+  const success = await onAddCalendar(newUrl.trim(), memberId);
+  
+  if (success) setNewUrl('');
+  setImporting(false);
+};
 
   const handleRefresh = (id) => {
     setRefreshingId(id);
@@ -472,7 +477,6 @@ export default function App() {
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [shareModalEvent, setShareModalEvent] = useState(null);
   const [editModalEvent, setEditModalEvent] = useState(null);
-  const [isManageCalOpen, setIsManageCalOpen] = useState(false);
 
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
@@ -520,17 +524,54 @@ export default function App() {
     setCurrentDate(dateObj.toISOString().split('T')[0]);
   };
 
-  const handleAddCalendar = (url, memberId) => {
+  const handleAddCalendar = async (url, memberId) => {
+  try {
+    // 1. Convert link and route through a proxy
+    const httpsUrl = url.replace('webcal://', 'https://').replace('webcals://', 'https://');
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(httpsUrl)}`;
+    
+    // 2. Fetch and parse the calendar data
+    const response = await fetch(proxyUrl);
+    const icsData = await response.text();
+    const jcalData = ICAL.parse(icsData);
+    const comp = new ICAL.Component(jcalData);
+    const vevents = comp.getAllSubcomponents('vevent');
+    
     const newCalId = Date.now().toString();
-    setCalendars(prev => [...prev, { id: newCalId, name: url, memberId, lastSynced: 'Just now' }]);
+
+    // 3. Transform data to match your Supabase columns (and convert time to decimal)
+    const newEvents = vevents.map(vevent => {
+      const event = new ICAL.Event(vevent);
+      const startDate = event.startDate ? event.startDate.toJSDate() : new Date();
+      const startDecimal = startDate.getHours() + (startDate.getMinutes() / 60);
+      
+      return {
+        id: `webcal-${newCalId}-${event.uid || Date.now() + Math.random()}`,
+        title: event.summary || 'Imported Event',
+        date: startDate.toISOString().split('T')[0],
+        location: event.location || '',
+        memberId: memberId,
+        start: startDecimal,
+        duration: 1
+      };
+    });
+
+    // 4. Save to Supabase
+    await supabase.from('events').insert(newEvents);
     
-    const mockEvents = [
-      { id: `sync1-${newCalId}`, memberId, title: 'Synced Meeting', date: currentDate, start: 10.5, duration: 1, location: url },
-      { id: `sync2-${newCalId}`, memberId, title: 'Imported Event', date: currentDate, start: 14, duration: 2, location: url }
-    ];
+    // 5. Add to the Imported Calendars list in the modal
+    const calName = comp.getFirstPropertyValue('x-wr-calname') || url;
+    setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId, lastSynced: 'Just now' }]);
     
-    mockEvents.forEach(evt => handleCreateEvent(evt));
-  };
+    alert(`Success! Imported ${newEvents.length} events.`);
+    return true; 
+    
+  } catch (error) {
+    console.error("Calendar import failed:", error);
+    alert("Could not import calendar. Make sure the link is public and valid.");
+    return false;
+  }
+};
 
   const handleDeleteCalendar = (id) => {
     setCalendars(prev => prev.filter(c => c.id !== id));
@@ -652,27 +693,15 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
             <button onClick={() => adjustDate(1)} className="p-1 hover:bg-white rounded-lg transition-colors"><ChevronRight size={16} /></button>
           </div>
         </div>
-        <div className="hidden md:flex items-center space-x-3 relative">
-          <button onClick={() => setIsManageCalOpen(!isManageCalOpen)} className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold transition-colors border border-indigo-100"><RefreshCw size={16} /><span>Manage Cal</span></button>
-          
-          {isManageCalOpen && (
-            <div className="absolute top-full right-12 mt-2 p-4 border rounded-xl bg-white shadow-xl flex flex-col gap-3 z-50 w-80 text-left">
-              <h3 className="font-semibold text-slate-700">Import External Calendar</h3>
-              <input id="webcalInput" type="text" placeholder="Paste webcal:// link here" className="border border-slate-200 p-2.5 rounded-lg w-full text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
-              <select id="webcalMember" className="border border-slate-200 p-2.5 rounded-lg w-full text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                <option value="">Select family member...</option>
-                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
-              <button onClick={() => {
-                const url = document.getElementById('webcalInput').value;
-                const memberId = document.getElementById('webcalMember').value;
-                if (!memberId) return alert("Please select a family member first.");
-                if (url) { handleImportWebcal(url, memberId); setIsManageCalOpen(false); }
-              }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium text-sm transition-colors mt-1">Import Calendar</button>
-            </div>
-          )}
-
-          <button className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all relative"><Bell size={20} /><span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span></button>
+        <div className="hidden md:flex items-center space-x-3">
+          <button onClick={() => setSyncModalOpen(true)} className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold transition-colors border border-indigo-100">
+            <RefreshCw size={16} />
+            <span>Manage Cal</span>
+          </button>
+          <button className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all relative">
+            <Bell size={20} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+          </button>
         </div>
       </nav>
 
