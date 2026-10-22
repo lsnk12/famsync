@@ -471,21 +471,31 @@ export default function App() {
   const [shareModalEvent, setShareModalEvent] = useState(null);
   const [editModalEvent, setEditModalEvent] = useState(null);
 
-  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
+ // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
+    // 1. Fetch Events
     const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
-      if (data && data.length > 0) {
-        setEvents(data);
-      }
+      if (data && data.length > 0) setEvents(data);
+    };
+
+    // 2. Fetch Members
+    const fetchMembers = async () => {
+      const { data, error } = await supabase.from('members').select('*');
+      if (data && data.length > 0) setMembers(data);
     };
 
     fetchEvents();
+    fetchMembers();
 
+    // 3. Listen for live changes on BOTH tables
     const channel = supabase
-      .channel('realtime-events')
+      .channel('realtime-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
         fetchEvents();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => {
+        fetchMembers();
       })
       .subscribe();
 
