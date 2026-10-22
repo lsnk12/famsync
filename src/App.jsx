@@ -526,17 +526,71 @@ export default function App() {
 
   const handleAddCalendar = async (url, memberId) => {
     try {
-      // 1. Convert link and use AllOrigins proxy instead of corsproxy.io
+      // 1. Format URL
       const httpsUrl = url.replace('webcal://', 'https://').replace('webcals://', 'https://');
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(httpsUrl)}`;
       
-      // 2. Fetch the calendar data
-      const response = await fetch(proxyUrl);
-      
-      // Safety check: Stop here if the download failed
-      if (!response.ok) {
-        throw new Error(`Download failed with status: ${response.status}`);
+      let icsData = '';
+
+      // 2. Try Primary Proxy: AllOrigins JSON wrapper
+      try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(httpsUrl)}`;
+        const response = await fetch(proxyUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.contents) icsData = data.contents;
+        }
+      } catch (e) {
+        console.warn("AllOrigins failed, trying backup proxy...");
       }
+
+      // 3. Fallback Proxy if primary fails or returns empty
+      if (!icsData) {
+        const backupProxyUrl = `https://corsproxy.io/?${encodeURIComponent(httpsUrl)}`;
+        const response = await fetch(backupProxyUrl);
+        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+        icsData = await response.text();
+      }
+
+      // 4. Parse iCal data
+      const jcalData = ICAL.parse(icsData);
+      const comp = new ICAL.Component(jcalData);
+      const vevents = comp.getAllSubcomponents('vevent');
+      
+      const newCalId = Date.now().toString();
+
+      // 5. Transform data to match Supabase columns
+      const newEvents = vevents.map(vevent => {
+        const event = new ICAL.Event(vevent);
+        const startDate = event.startDate ? event.startDate.toJSDate() : new Date();
+        const startDecimal = startDate.getHours() + (startDate.getMinutes() / 60);
+        
+        return {
+          id: `webcal-${newCalId}-${event.uid || Date.now() + Math.random()}`,
+          title: event.summary || 'Imported Event',
+          date: startDate.toISOString().split('T')[0],
+          location: event.location || '',
+          memberId: memberId,
+          start: startDecimal,
+          duration: 1
+        };
+      });
+
+      // 6. Save to Supabase
+      await supabase.from('events').insert(newEvents);
+      
+      // 7. Add to Imported Calendars list in modal
+      const calName = comp.getFirstPropertyValue('x-wr-calname') || url;
+      setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId, lastSynced: 'Just now' }]);
+      
+      alert(`Success! Imported ${newEvents.length} events.`);
+      return true; 
+      
+    } catch (error) {
+      console.error("Calendar import failed:", error);
+      alert("Could not import calendar. Please verify the iCloud link is public.");
+      return false;
+    }
+  };
 
       const icsData = await response.text();
       const jcalData = ICAL.parse(icsData);
