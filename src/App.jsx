@@ -355,8 +355,8 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
                         <div className="flex flex-col h-full justify-between">
                           <div className="flex justify-between items-start">
                             <div className="overflow-hidden">
-                              <h4 className="font-bold text-xs sm:text-sm truncate drop-shadow-sm">{event.title}</h4>
-                              <p className="text-[10px] sm:text-xs opacity-90 truncate mt-0.5 font-medium">{formatTime(event.start)} - {formatTime(event.start + event.duration)}</p>
+                              <h4 className="font-bold text-xs sm:text-sm whitespace-normal break-words leading-tight drop-shadow-sm">{event.title}</h4>
+<p className="text-[10px] sm:text-xs opacity-90 mt-0.5 font-medium">{formatTime(event.start)} - {formatTime(event.start + event.duration)}</p>
                             </div>
                             <div className="hidden sm:flex items-center space-x-1 opacity-0 group-hover/card:opacity-100 transition-opacity ml-1 bg-black/10 rounded-lg p-0.5 backdrop-blur-sm">
                               <button onClick={(e) => { e.stopPropagation(); onOpenEdit(event); }} title="Edit Event" className="p-1.5 hover:bg-white/20 rounded-md transition-colors"><Edit3 size={12} /></button>
@@ -675,8 +675,14 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
 };
   const handleCreateEvent = async (newEvent) => {
     const eventToSave = { ...newEvent, id: newEvent.id || `e-${Date.now()}` };
-    setEvents(prev => [...prev, eventToSave]);
-    await supabase.from('events').insert([eventToSave]);
+    setEvents(prev => [...prev, eventToSave]); // Show instantly
+    
+    const { error } = await supabase.from('events').insert([eventToSave]);
+    if (error) {
+      console.error("Database save failed:", error);
+      alert("Error saving event! It will disappear. Please check Supabase policies.");
+      setEvents(prev => prev.filter(e => e.id !== eventToSave.id)); // Revert UI
+    }
   };
 
   const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
