@@ -482,22 +482,59 @@ const MonthView = ({ currentDate, events, members, onSelectDay }) => {
   );
 };
 
-const YearView = ({ onSelectMonth }) => {
+const YearView = ({ events = [], currentDate, onSelectMonth }) => {
+  // Get the year we are currently viewing
+  const viewYear = new Date(currentDate + 'T12:00:00').getFullYear();
+  
+  // Get today's real date to correctly highlight the "Current" badge and today's number
+  const today = new Date();
+  const currentRealMonth = today.getMonth();
+  const currentRealYear = today.getFullYear();
+  const currentRealDay = today.getDate();
+
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       {MONTH_NAMES.map((month, idx) => {
-        const isCurrentMonth = idx === 9;
+        const isCurrentMonth = idx === currentRealMonth && viewYear === currentRealYear;
+        
+        // Calculate days in this month and what day of the week it starts on
+        const daysInMonth = new Date(viewYear, idx + 1, 0).getDate();
+        const firstDayOfMonth = new Date(viewYear, idx, 1).getDay();
+        
         return (
           <div key={month} onClick={() => onSelectMonth(month)} className={`p-4 rounded-2xl border transition-all cursor-pointer hover:shadow-md ${isCurrentMonth ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 hover:border-slate-300 bg-white'}`}>
-            <div className="flex justify-between items-center mb-3"><h3 className="font-bold text-slate-800 text-sm sm:text-base">{month}</h3>{isCurrentMonth && <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">Current</span>}</div>
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-400">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i}>{d}</span>)}{Array.from({ length: 28 }, (_, i) => <div key={i} className={`h-4 rounded flex items-center justify-center font-medium ${i + 1 === 21 && isCurrentMonth ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600'}`}>{i + 1}</div>)}</div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-slate-800 text-sm sm:text-base">{month}</h3>
+              {isCurrentMonth && <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">Current</span>}
+            </div>
+            <div className="grid grid-cols-7 gap-y-2 gap-x-1 text-center text-[10px] text-slate-400">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={`header-${i}`}>{d}</span>)}
+              
+              {/* Empty slots for the days before the 1st of the month */}
+              {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} />)}
+              
+              {/* Actual days of the month */}
+              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                const dateStr = `${viewYear}-${String(idx + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = isCurrentMonth && day === currentRealDay;
+                const hasEvents = events.some(e => e.date === dateStr);
+                
+                return (
+                  <div key={day} className="flex flex-col items-center justify-start h-6">
+                    <div className={`w-4 h-4 rounded flex items-center justify-center font-medium ${isToday ? 'bg-indigo-600 text-white font-bold' : 'text-slate-600'}`}>
+                      {day}
+                    </div>
+                    {hasEvents && <div className="w-1 h-1 bg-indigo-500 rounded-full mt-0.5" />}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })}
     </div>
   );
 };
-
 export default function App() {
 const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().split('T')[0]);  const [viewMode, setViewMode] = useState('day');
   const [members, setMembers] = useState(() => {
@@ -802,7 +839,7 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
           </div>
           {viewMode === 'day' && <Timeline events={dayEvents} members={members} onDeleteMember={handleDeleteMember} onMoveEvent={handleMoveEvent} onOpenShare={(evt) => setShareModalEvent(evt)} onOpenEdit={(evt) => setEditModalEvent(evt)} />}
           {viewMode === 'month' && <MonthView currentDate={currentDate} events={events} members={members} onSelectDay={handleDaySelect} />}
-          {viewMode === 'year' && <YearView onSelectMonth={() => setViewMode('month')} />}
+          {viewMode === 'year' && <YearView events={events} currentDate={currentDate} onSelectMonth={() => setViewMode('month')} />}
         </div>
       </main>
       <SyncModal isOpen={syncModalOpen} onClose={() => setSyncModalOpen(false)} members={members} calendars={calendars} onAddCalendar={handleAddCalendar} onDeleteCalendar={handleDeleteCalendar} onRefreshCalendar={handleRefreshCalendar} />
