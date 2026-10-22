@@ -379,9 +379,17 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
 };
 
 const MonthView = ({ currentDate, events, members, onSelectDay }) => {
-  const daysInMonth = 31;
+  const dateObj = new Date(currentDate + 'T12:00:00');
+  const year = dateObj.getFullYear();
+  const month = dateObj.getMonth();
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sun, 1 = Mon, etc.
+
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const daysOfWeekShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden p-3 sm:p-6">
@@ -393,19 +401,45 @@ const MonthView = ({ currentDate, events, members, onSelectDay }) => {
           </span>
         ))}
       </div>
+
       <div className="grid grid-cols-7 gap-1.5 sm:gap-3">
+        {/* Render empty offset slots for days prior to the 1st of the month */}
+        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+          <div key={`empty-${i}`} className="min-h-[55px] sm:min-h-[110px] bg-slate-50/50 rounded-xl sm:rounded-2xl" />
+        ))}
+
+        {/* Render actual month days */}
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-          const paddedDay = day < 10 ? '0' + day : day;
-          const dateStr = `2026-10-${paddedDay}`;
-          const isToday = dateStr === currentDate;
+          const paddedMonth = String(month + 1).padStart(2, '0');
+          const paddedDay = String(day).padStart(2, '0');
+          const dateStr = `${year}-${paddedMonth}-${paddedDay}`;
+          const isToday = dateStr === todayStr;
+          const isSelected = dateStr === currentDate;
+          
           const safeEvents = Array.isArray(events) ? events : [];
           const dayEvents = safeEvents.filter(e => e && e.date === dateStr);
           
           return (
-            <div key={day} onClick={() => onSelectDay(dateStr)} className={`min-h-[55px] sm:min-h-[110px] p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${isToday ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-slate-100 hover:border-slate-300 hover:shadow-sm bg-white'}`}>
+            <div 
+              key={day} 
+              onClick={() => onSelectDay(dateStr)} 
+              className={`min-h-[55px] sm:min-h-[110px] p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                isToday 
+                  ? 'border-indigo-600 bg-indigo-50 shadow-sm' 
+                  : isSelected 
+                  ? 'border-indigo-300 bg-slate-50' 
+                  : 'border-slate-100 hover:border-slate-300 hover:shadow-sm bg-white'
+              }`}
+            >
               <div className="flex justify-between items-center">
-                <span className={`text-xs sm:text-sm font-bold ${isToday ? 'bg-indigo-600 text-white w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center' : 'text-slate-700'}`}>{day}</span>
-                {dayEvents.length > 0 && <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{dayEvents.length} events</span>}
+                <span className={`text-xs sm:text-sm font-bold ${isToday ? 'bg-indigo-600 text-white w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center' : 'text-slate-700'}`}>
+                  {day}
+                </span>
+                {dayEvents.length > 0 && (
+                  <span className="hidden sm:inline-block text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {dayEvents.length} events
+                  </span>
+                )}
               </div>
 
               <div className="hidden sm:block space-y-1 mt-2">
@@ -457,9 +491,7 @@ const YearView = ({ onSelectMonth }) => {
 };
 
 export default function App() {
-  const [currentDate, setCurrentDate] = useState('2026-10-21');
-  const [viewMode, setViewMode] = useState('day');
-  
+const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().split('T')[0]);  const [viewMode, setViewMode] = useState('day');
   const [members, setMembers] = useState(() => {
     const saved = localStorage.getItem('famsync-members');
     return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
