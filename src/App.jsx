@@ -839,8 +839,19 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
           </div>
           {viewMode === 'day' && <Timeline events={dayEvents} members={members} onDeleteMember={handleDeleteMember} onMoveEvent={handleMoveEvent} onOpenShare={(evt) => setShareModalEvent(evt)} onOpenEdit={(evt) => setEditModalEvent(evt)} />}
           {viewMode === 'month' && <MonthView currentDate={currentDate} events={events} members={members} onSelectDay={handleDaySelect} />}
-          {viewMode === 'year' && <YearView events={events} currentDate={currentDate} onSelectMonth={() => setViewMode('month')} />}
-        </div>
+{viewMode === 'year' && (
+  <YearView 
+    events={events} 
+    currentDate={currentDate} 
+    onSelectMonth={(monthName) => {
+      const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(monthName);
+      const currentYear = new Date(currentDate + 'T12:00:00').getFullYear();
+      const newDate = new Date(currentYear, monthIndex, 1, 12, 0, 0);
+      setCurrentDate(newDate.toISOString().split('T')[0]);
+      setViewMode('month');
+    }} 
+  />
+)}        </div>
       </main>
       <SyncModal isOpen={syncModalOpen} onClose={() => setSyncModalOpen(false)} members={members} calendars={calendars} onAddCalendar={handleAddCalendar} onDeleteCalendar={handleDeleteCalendar} onRefreshCalendar={handleRefreshCalendar} />
       <AddMemberModal isOpen={addMemberOpen} onClose={() => setAddMemberOpen(false)} onAddMember={handleAddMember} />
