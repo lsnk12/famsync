@@ -755,7 +755,11 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
 
           <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-100 rounded-2xl px-2 sm:px-3 py-1.5">
             <button onClick={() => adjustDate(-1)} className="p-1 hover:bg-white rounded-lg transition-colors"><ChevronLeft size={16} /></button>
-            <span className="font-bold text-slate-700 text-xs sm:text-sm min-w-[110px] sm:min-w-[130px] text-center">{viewMode === 'day' ? displayDate : viewMode === 'month' ? 'October 2026' : '2026'}</span>
+            <span className="font-bold text-slate-700 text-xs sm:text-sm min-w-[110px] sm:min-w-[130px] text-center">
+              {viewMode === 'day' ? new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) 
+               : viewMode === 'month' ? new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) 
+               : new Date(currentDate + 'T12:00:00').getFullYear()}
+            </span>
             <button onClick={() => adjustDate(1)} className="p-1 hover:bg-white rounded-lg transition-colors"><ChevronRight size={16} /></button>
           </div>
         </div>
