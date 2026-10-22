@@ -325,11 +325,11 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
               ))}
             </div>
           </div>
-          
+          git add .
           <div className="relative">
             {members.map(member => (
               <div key={member.id} className="flex border-b border-slate-200 hover:bg-slate-100 transition-colors min-h-[90px] sm:min-h-[120px] group">
-                <div className="w-20 sm:w-56 flex-none sticky left-0 z-20 bg-white/95 backdrop-blur-md border-r border-slate-200 p-2 sm:p-4 flex items-center justify-between shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                <div className="w-28 sm:w-56 flex-none sticky left-0 z-20 bg-white/95 backdrop-blur-md border-r border-slate-200 p-2 sm:p-4 flex items-center justify-between shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                   <div className="flex items-center space-x-2 sm:space-x-3">
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-sm flex-none ${member.color}`}>
                       {member.name.charAt(0).toUpperCase()}
@@ -341,7 +341,6 @@ const Timeline = ({ events, members, onDeleteMember, onMoveEvent, onOpenShare, o
                   </div>
                   <button onClick={() => onDeleteMember(member.id)} title={`Remove ${member.name}`} className="hidden sm:block p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
                 </div>
-
                 <div className="flex-1 relative py-2" style={{ width: `${(END_HOUR - START_HOUR + 1) * HOUR_WIDTH}px` }} onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }} onDrop={(e) => handleDrop(e, member.id)}>
                   <div className="absolute inset-0 flex pointer-events-none opacity-20">
                     {hours.map(h => <div key={`grid-${h}`} className="h-full border-l border-slate-400 border-dashed" style={{ width: `${HOUR_WIDTH}px` }} />)}
