@@ -727,6 +727,17 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
             <button onClick={() => setViewMode('month')} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Month</button>
             <button onClick={() => setViewMode('year')} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'year' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Year</button>
           </div>
+          
+          <button 
+            onClick={() => {
+              setCurrentDate(new Date().toISOString().split('T')[0]);
+              setViewMode('day');
+            }} 
+            className="px-4 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors shadow-sm"
+          >
+            Today
+          </button>
+
           <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-100 rounded-2xl px-2 sm:px-3 py-1.5">
             <button onClick={() => adjustDate(-1)} className="p-1 hover:bg-white rounded-lg transition-colors"><ChevronLeft size={16} /></button>
             <span className="font-bold text-slate-700 text-xs sm:text-sm min-w-[110px] sm:min-w-[130px] text-center">{viewMode === 'day' ? displayDate : viewMode === 'month' ? 'October 2026' : '2026'}</span>
