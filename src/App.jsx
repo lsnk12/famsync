@@ -652,7 +652,7 @@ const handleImportWebcal = async (webcalUrl, memberId) => {
             <button onClick={() => adjustDate(1)} className="p-1 hover:bg-white rounded-lg transition-colors"><ChevronRight size={16} /></button>
           </div>
         </div>
-        <<div className="hidden md:flex items-center space-x-3 relative">
+        <div className="hidden md:flex items-center space-x-3 relative">
           <button onClick={() => setIsManageCalOpen(!isManageCalOpen)} className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold transition-colors border border-indigo-100"><RefreshCw size={16} /><span>Manage Cal</span></button>
           
           {isManageCalOpen && (
