@@ -591,7 +591,7 @@ export default function App() {
       return false;
     }
   };
-
+  
       const icsData = await response.text();
       const jcalData = ICAL.parse(icsData);
       const comp = new ICAL.Component(jcalData);
