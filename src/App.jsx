@@ -626,20 +626,21 @@ const handleAddCalendar = async (url, memberId) => {
       const vevents = comp.getAllSubcomponents('vevent');
       
       const newCalId = Date.now().toString();
+      const targetMemberId = memberId || members[0]?.id;
 
-      // 3. Map events to match full app state requirements
+      // 3. Map events to exact Supabase schema constraints
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         
         let eventDateStr;
-        let startDecimal = 12; // Default 12:00 PM for all-day events
+        let startDecimal = 12; // Default to noon
 
         if (event.startDate) {
           if (event.startDate.isDate) {
-            // All-day event: use exact YYYY-MM-DD
+            // All-day event: use explicit YYYY-MM-DD
             eventDateStr = `${event.startDate.year}-${String(event.startDate.month).padStart(2, '0')}-${String(event.startDate.day).padStart(2, '0')}`;
           } else {
-            // Timed event: convert to local date & hour decimal
+            // Timed event: convert to local JS Date
             const jsDate = event.startDate.toJSDate();
             eventDateStr = jsDate.toISOString().split('T')[0];
             startDecimal = jsDate.getHours() + (jsDate.getMinutes() / 60);
@@ -648,15 +649,12 @@ const handleAddCalendar = async (url, memberId) => {
           eventDateStr = new Date().toISOString().split('T')[0];
         }
 
-        // Calculate end decimal (default duration: 1 hour)
         let endDecimal = startDecimal + 1;
         if (event.endDate && !event.endDate.isDate) {
           const jsEndDate = event.endDate.toJSDate();
           endDecimal = jsEndDate.getHours() + (jsEndDate.getMinutes() / 60);
           if (endDecimal <= startDecimal) endDecimal = startDecimal + 1;
         }
-
-        const targetMemberId = memberId || members[0]?.id;
 
         return {
           id: `webcal-${newCalId}-${event.uid || (Date.now() + Math.random())}`,
@@ -669,8 +667,9 @@ const handleAddCalendar = async (url, memberId) => {
           end: endDecimal,
           duration: 1
         };
+      });
 
-      // 4. Save to Supabase database
+      // 4. Save to Supabase database (outside the map loop)
       const { data, error } = await supabase.from('events').insert(newEvents).select();
 
       if (error) {
@@ -684,7 +683,7 @@ const handleAddCalendar = async (url, memberId) => {
       setEvents(prev => [...prev, ...importedData]);
 
       const calName = comp.getFirstPropertyValue('x-wr-calname') || 'External Calendar';
-      setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId, lastSynced: 'Just now' }]);
+      setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId: targetMemberId, lastSynced: 'Just now' }]);
       
       alert(`Success! Imported ${importedData.length} events.`);
       return true; 
