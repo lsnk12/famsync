@@ -649,13 +649,12 @@ const handleAddCalendar = async (url, memberId) => {
           eventDateStr = new Date().toISOString().split('T')[0];
         }
 
-        return {
+       return {
           id: `webcal-${newCalId}-${event.uid || (Date.now() + Math.random())}`,
           title: event.summary || 'Imported Event',
           date: eventDateStr,
           location: event.location || '',
-          member_id: targetMemberId,
-          memberId: targetMemberId,
+          memberId: targetMemberId, // Keep only the camelCase version
           start: startDecimal,
           duration: 1
         };
