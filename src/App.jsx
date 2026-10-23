@@ -664,13 +664,11 @@ const handleAddCalendar = async (url, memberId) => {
           date: eventDateStr,
           location: event.location || '',
           member_id: targetMemberId,
-          memberId: targetMemberId, // Set both formats so all views read it correctly
+          memberId: targetMemberId,
           start: startDecimal,
           end: endDecimal,
-          duration: 1,
-          color: 'bg-purple-500 text-white' // Default color so events render visibly
+          duration: 1
         };
-      });
 
       // 4. Save to Supabase database
       const { data, error } = await supabase.from('events').insert(newEvents).select();
