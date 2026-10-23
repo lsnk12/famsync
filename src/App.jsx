@@ -724,9 +724,8 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
 
-  const handleAddEvent = async (newEvent) => {
+ const handleSaveEvent = async (newEvent) => {
     // 1. Clean the event object to strictly match your Supabase schema
-    // Strip out 'color', 'end', and 'member_id'
     const dbEvent = {
       id: newEvent.id || Date.now().toString(),
       title: newEvent.title,
@@ -737,16 +736,23 @@ const handleAddCalendar = async (url, memberId) => {
       duration: newEvent.duration || 1
     };
 
-    // 2. Optimistically update the UI so it feels fast
-    setEvents(prev => [...prev, dbEvent]);
+    // 2. Optimistically update the UI
+    setEvents(prev => {
+      // Check if this is an edit to an existing event, or a brand new one
+      const isExisting = prev.some(e => e.id === dbEvent.id);
+      if (isExisting) {
+        return prev.map(e => e.id === dbEvent.id ? dbEvent : e);
+      }
+      return [...prev, dbEvent];
+    });
 
-    // 3. Save to Supabase
-    const { error } = await supabase.from('events').insert([dbEvent]);
+    // 3. Save to Supabase using upsert (handles both inserts and updates)
+    const { error } = await supabase.from('events').upsert([dbEvent]);
 
     if (error) {
-      console.error("Database error saving manual event:", error);
+      console.error("Database error saving event:", error);
       alert(`Failed to save event: ${error.message}`);
-      // Revert the UI if the database rejected it
+      // Remove from UI if the database rejected it
       setEvents(prev => prev.filter(e => e.id !== dbEvent.id));
     }
   };
