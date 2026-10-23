@@ -558,10 +558,9 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
     // 1. Fetch Events
-   const fetchEvents = async () => {
+  const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
       if (data && data.length > 0) {
-        // Enforce strict number formatting on incoming DB records
         const formattedData = data.map(e => ({
           ...e,
           start: Number(e.start),
