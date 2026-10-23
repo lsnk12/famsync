@@ -649,13 +649,6 @@ const handleAddCalendar = async (url, memberId) => {
           eventDateStr = new Date().toISOString().split('T')[0];
         }
 
-        let endDecimal = startDecimal + 1;
-        if (event.endDate && !event.endDate.isDate) {
-          const jsEndDate = event.endDate.toJSDate();
-          endDecimal = jsEndDate.getHours() + (jsEndDate.getMinutes() / 60);
-          if (endDecimal <= startDecimal) endDecimal = startDecimal + 1;
-        }
-
         return {
           id: `webcal-${newCalId}-${event.uid || (Date.now() + Math.random())}`,
           title: event.summary || 'Imported Event',
@@ -665,10 +658,10 @@ const handleAddCalendar = async (url, memberId) => {
           memberId: targetMemberId,
           start: startDecimal,
           duration: 1
-          // Removed 'end' property to match Supabase table schema
         };
+      });
 
-      // 4. Save to Supabase database (outside the map loop)
+      // 4. Save to Supabase database
       const { data, error } = await supabase.from('events').insert(newEvents).select();
 
       if (error) {
