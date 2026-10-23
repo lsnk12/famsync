@@ -742,27 +742,6 @@ const handleSaveEvent = async (eventForm) => {
       alert(`Database Save Error: ${error.message}`);
       return;
     }
-  };// <-- Make sure the function closes HERE
-
-    // 2. Optimistically update the UI
-    setEvents(prev => {
-      // Check if this is an edit to an existing event, or a brand new one
-      const isExisting = prev.some(e => e.id === dbEvent.id);
-      if (isExisting) {
-        return prev.map(e => e.id === dbEvent.id ? dbEvent : e);
-      }
-      return [...prev, dbEvent];
-    });
-
-    // 3. Save to Supabase using upsert (handles both inserts and updates)
-    const { error } = await supabase.from('events').upsert([dbEvent]);
-
-    if (error) {
-      console.error("Database error saving event:", error);
-      alert(`Failed to save event: ${error.message}`);
-      // Remove from UI if the database rejected it
-      setEvents(prev => prev.filter(e => e.id !== dbEvent.id));
-    }
   };
 
   const handleDeleteEvent = async (eventId) => {
