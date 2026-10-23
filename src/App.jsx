@@ -627,20 +627,19 @@ const handleAddCalendar = async (url, memberId) => {
       
       const newCalId = Date.now().toString();
 
-      // 3. Map events to exact Supabase schema constraints
+      // 3. Map events to match full app state requirements
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         
-        // Handle All-Day vs Timed events cleanly
         let eventDateStr;
-        let startDecimal = 12; // Default to noon
+        let startDecimal = 12; // Default 12:00 PM for all-day events
 
         if (event.startDate) {
           if (event.startDate.isDate) {
-            // All-day event: force YYYY-MM-DD directly without timezone shifts
+            // All-day event: use exact YYYY-MM-DD
             eventDateStr = `${event.startDate.year}-${String(event.startDate.month).padStart(2, '0')}-${String(event.startDate.day).padStart(2, '0')}`;
           } else {
-            // Timed event: convert to local JS Date
+            // Timed event: convert to local date & hour decimal
             const jsDate = event.startDate.toJSDate();
             eventDateStr = jsDate.toISOString().split('T')[0];
             startDecimal = jsDate.getHours() + (jsDate.getMinutes() / 60);
@@ -649,15 +648,27 @@ const handleAddCalendar = async (url, memberId) => {
           eventDateStr = new Date().toISOString().split('T')[0];
         }
 
+        // Calculate end decimal (default duration: 1 hour)
+        let endDecimal = startDecimal + 1;
+        if (event.endDate && !event.endDate.isDate) {
+          const jsEndDate = event.endDate.toJSDate();
+          endDecimal = jsEndDate.getHours() + (jsEndDate.getMinutes() / 60);
+          if (endDecimal <= startDecimal) endDecimal = startDecimal + 1;
+        }
+
+        const targetMemberId = memberId || members[0]?.id;
+
         return {
           id: `webcal-${newCalId}-${event.uid || (Date.now() + Math.random())}`,
           title: event.summary || 'Imported Event',
           date: eventDateStr,
           location: event.location || '',
-          member_id: memberId || members[0]?.id, // Ensure snake_case and fallback
-          memberId: memberId || members[0]?.id,  // Keep for backwards compatibility
+          member_id: targetMemberId,
+          memberId: targetMemberId, // Set both formats so all views read it correctly
           start: startDecimal,
-          duration: 1
+          end: endDecimal,
+          duration: 1,
+          color: 'bg-purple-500 text-white' // Default color so events render visibly
         };
       });
 
