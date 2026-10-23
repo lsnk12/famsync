@@ -706,17 +706,6 @@ const handleAddCalendar = async (url, memberId) => {
     events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
     await supabase.from('members').delete().eq('id', memberId);
   };
-  const handleCreateEvent = async (newEvent) => {
-    const eventToSave = { ...newEvent, id: newEvent.id || `e-${Date.now()}` };
-    setEvents(prev => [...prev, eventToSave]); // Show instantly
-    
-    const { error } = await supabase.from('events').insert([eventToSave]);
-    if (error) {
-      console.error("Database save failed:", error);
-      alert("Error saving event! It will disappear. Please check Supabase policies.");
-      setEvents(prev => prev.filter(e => e.id !== eventToSave.id)); // Revert UI
-    }
-  };
 
   const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
     const updated = { ...events.find(e => e.id === eventId), memberId: targetMemberId, start: newStart };
