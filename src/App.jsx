@@ -628,16 +628,16 @@ const handleAddCalendar = async (url, memberId) => {
       const newCalId = Date.now().toString();
       const targetMemberId = memberId || members[0]?.id;
 
-      // 3. Map events to exact Supabase schema constraints
+      // 3. Map events matching strict Supabase schema (no 'end' or 'color' columns)
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
         
         let eventDateStr;
-        let startDecimal = 12; // Default to noon
+        let startDecimal = 12; // Default to noon for all-day events
 
         if (event.startDate) {
           if (event.startDate.isDate) {
-            // All-day event: use explicit YYYY-MM-DD
+            // All-day event: explicit YYYY-MM-DD
             eventDateStr = `${event.startDate.year}-${String(event.startDate.month).padStart(2, '0')}-${String(event.startDate.day).padStart(2, '0')}`;
           } else {
             // Timed event: convert to local JS Date
