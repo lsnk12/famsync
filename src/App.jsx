@@ -724,9 +724,31 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
 
-  const handleSaveEvent = async (updatedEvent) => {
-    setEvents(prev => prev.map(e => e && e.id === updatedEvent.id ? updatedEvent : e));
-    await supabase.from('events').update(updatedEvent).eq('id', updatedEvent.id);
+  const handleAddEvent = async (newEvent) => {
+    // 1. Clean the event object to strictly match your Supabase schema
+    // Strip out 'color', 'end', and 'member_id'
+    const dbEvent = {
+      id: newEvent.id || Date.now().toString(),
+      title: newEvent.title,
+      date: newEvent.date,
+      location: newEvent.location || '',
+      memberId: newEvent.memberId || newEvent.member_id, 
+      start: newEvent.start,
+      duration: newEvent.duration || 1
+    };
+
+    // 2. Optimistically update the UI so it feels fast
+    setEvents(prev => [...prev, dbEvent]);
+
+    // 3. Save to Supabase
+    const { error } = await supabase.from('events').insert([dbEvent]);
+
+    if (error) {
+      console.error("Database error saving manual event:", error);
+      alert(`Failed to save event: ${error.message}`);
+      // Revert the UI if the database rejected it
+      setEvents(prev => prev.filter(e => e.id !== dbEvent.id));
+    }
   };
 
   const handleDeleteEvent = async (eventId) => {
