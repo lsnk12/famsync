@@ -724,31 +724,25 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
 
- const handleSaveEvent = async (eventForm) => {
-  // Ensure types strictly match your Supabase table schema
-  const dbEvent = {
-    id: eventForm.id || `evt-${Date.now()}`,
-    title: eventForm.title || 'Untitled Event',
-    date: eventForm.date,
-    location: eventForm.location || '',
-    memberId: String(eventForm.memberId || eventForm.member_id),
-    // If your Supabase table expects numbers, use Number(); if strings, use String()
-    start: Number(eventForm.start),
-    duration: Number(eventForm.duration || 1)
-  };
+const handleSaveEvent = async (eventForm) => {
+    const dbEvent = {
+      id: eventForm.id || `evt-${Date.now()}`,
+      title: eventForm.title || 'Untitled Event',
+      date: eventForm.date,
+      location: eventForm.location || '',
+      memberId: String(eventForm.memberId || eventForm.member_id),
+      start: Number(eventForm.start),
+      duration: Number(eventForm.duration || 1)
+    };
 
-  const { data, error } = await supabase
-    .from('events')
-    .upsert([dbEvent]);
+    const { error } = await supabase.from('events').upsert([dbEvent]);
 
-  if (error) {
-    console.error('Supabase Save Error:', error);
-    alert(`Database Save Error: ${error.message}`);
-    return;
-  }
-
-  // Reload/update local state here
-};
+    if (error) {
+      console.error('Supabase Save Error:', error);
+      alert(`Database Save Error: ${error.message}`);
+      return;
+    }
+  };// <-- Make sure the function closes HERE
 
     // 2. Optimistically update the UI
     setEvents(prev => {
@@ -883,4 +877,3 @@ const handleAddCalendar = async (url, memberId) => {
       <EditEventModal isOpen={Boolean(editModalEvent)} onClose={() => setEditModalEvent(null)} event={editModalEvent} members={members} onSaveEvent={handleSaveEvent} onDeleteEvent={handleDeleteEvent} />
     </div>
   );
-}
