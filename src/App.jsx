@@ -664,10 +664,9 @@ const handleAddCalendar = async (url, memberId) => {
           member_id: targetMemberId,
           memberId: targetMemberId,
           start: startDecimal,
-          end: endDecimal,
           duration: 1
+          // Removed 'end' property to match Supabase table schema
         };
-      });
 
       // 4. Save to Supabase database (outside the map loop)
       const { data, error } = await supabase.from('events').insert(newEvents).select();
