@@ -731,6 +731,31 @@ const handleSaveEvent = async (eventForm) => {
       alert(`Database Save Error: ${error.message}`);
     }
   };
+  const handleCreateEvent = async (newEvent) => {
+    const dbEvent = {
+      id: newEvent.id || crypto.randomUUID(),
+      title: newEvent.title || 'Untitled Event',
+      date: newEvent.date,
+      location: newEvent.location || '',
+      memberId: String(newEvent.memberId || newEvent.member_id),
+      start: Number(newEvent.start),
+      duration: Number(newEvent.duration || 1)
+    };
+
+    const { data, error } = await supabase.from('events').insert([dbEvent]).select();
+    
+    if (error) {
+      console.error("Database save failed:", error);
+      alert(`Error saving event: ${error.message}`); 
+      return;
+    }
+
+    if (data && data.length > 0) {
+      setEvents(prev => [...prev, ...data]);
+    } else {
+      alert("Supabase didn't return an error, but didn't save the data either. Check your RLS policies!");
+    }
+  };
 
   const handleDeleteEvent = async (eventId) => {
     setEvents(prev => prev.filter(e => e && e.id !== eventId));
