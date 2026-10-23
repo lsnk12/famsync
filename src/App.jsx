@@ -854,5 +854,6 @@ const handleSaveEvent = async (eventForm) => {
       <AddEventModal isOpen={addEventOpen} onClose={() => setAddEventOpen(false)} members={members} currentDate={currentDate} onCreateEvent={handleCreateEvent} />
       <ShareEventModal isOpen={Boolean(shareModalEvent)} onClose={() => setShareModalEvent(null)} event={shareModalEvent} members={members} onShareEvent={handleShareEvent} />
       <EditEventModal isOpen={Boolean(editModalEvent)} onClose={() => setEditModalEvent(null)} event={editModalEvent} members={members} onSaveEvent={handleSaveEvent} onDeleteEvent={handleDeleteEvent} />
-    </div>
+ </div>
   );
+};
