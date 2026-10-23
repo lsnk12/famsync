@@ -724,23 +724,29 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
 
-const handleSaveEvent = async (eventForm) => {
+const handleCreateEvent = async (newEvent) => {
+    // 1. Strictly format the data to match your Supabase column types exactly
     const dbEvent = {
-      id: eventForm.id || `evt-${Date.now()}`,
-      title: eventForm.title || 'Untitled Event',
-      date: eventForm.date,
-      location: eventForm.location || '',
-      memberId: String(eventForm.memberId || eventForm.member_id),
-      start: Number(eventForm.start),
-      duration: Number(eventForm.duration || 1)
+      id: newEvent.id || `evt-${Date.now()}`,
+      title: newEvent.title || 'Untitled Event',
+      date: newEvent.date,
+      location: newEvent.location || '',
+      memberId: String(newEvent.memberId || newEvent.member_id),
+      start: Number(newEvent.start),
+      duration: Number(newEvent.duration || 1)
     };
 
-    const { error } = await supabase.from('events').upsert([dbEvent]);
+    // 2. Update the UI instantly
+    setEvents(prev => [...prev, dbEvent]); 
 
+    // 3. Save to database using the strictly formatted object
+    const { error } = await supabase.from('events').insert([dbEvent]);
+    
     if (error) {
-      console.error('Supabase Save Error:', error);
-      alert(`Database Save Error: ${error.message}`);
-      return;
+      console.error("Database save failed:", error);
+      alert(`Error saving event: ${error.message}`); 
+      // Revert UI if Supabase rejects it so it doesn't get stuck
+      setEvents(prev => prev.filter(e => e.id !== dbEvent.id)); 
     }
   };
 
