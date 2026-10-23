@@ -610,8 +610,9 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
 
 const handleAddCalendar = async (url, memberId) => {
     try {
-      // 1. Fetch .ics data via your serverless backend proxy
-      const response = await fetch(`/api/ical-proxy?url=${encodeURIComponent(url)}`);
+      // 1. Sanitize webcal protocol and route through serverless proxy
+      const cleanUrl = url.replace('webcal://', 'https://').replace('webcals://', 'https://');
+      const response = await fetch(`/api/ical-proxy?url=${encodeURIComponent(cleanUrl)}`);
       
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`);
@@ -626,39 +627,66 @@ const handleAddCalendar = async (url, memberId) => {
       
       const newCalId = Date.now().toString();
 
-      // 3. Map events to schema
+      // 3. Map events to exact Supabase schema constraints
       const newEvents = vevents.map(vevent => {
         const event = new ICAL.Event(vevent);
-        const startDate = event.startDate ? event.startDate.toJSDate() : new Date();
-        const startDecimal = startDate.getHours() + (startDate.getMinutes() / 60);
         
+        // Handle All-Day vs Timed events cleanly
+        let eventDateStr;
+        let startDecimal = 12; // Default to noon
+
+        if (event.startDate) {
+          if (event.startDate.isDate) {
+            // All-day event: force YYYY-MM-DD directly without timezone shifts
+            eventDateStr = `${event.startDate.year}-${String(event.startDate.month).padStart(2, '0')}-${String(event.startDate.day).padStart(2, '0')}`;
+          } else {
+            // Timed event: convert to local JS Date
+            const jsDate = event.startDate.toJSDate();
+            eventDateStr = jsDate.toISOString().split('T')[0];
+            startDecimal = jsDate.getHours() + (jsDate.getMinutes() / 60);
+          }
+        } else {
+          eventDateStr = new Date().toISOString().split('T')[0];
+        }
+
         return {
-          id: `webcal-${newCalId}-${event.uid || Date.now() + Math.random()}`,
+          id: `webcal-${newCalId}-${event.uid || (Date.now() + Math.random())}`,
           title: event.summary || 'Imported Event',
-          date: startDate.toISOString().split('T')[0],
+          date: eventDateStr,
           location: event.location || '',
-          memberId: memberId,
+          member_id: memberId || members[0]?.id, // Ensure snake_case and fallback
+          memberId: memberId || members[0]?.id,  // Keep for backwards compatibility
           start: startDecimal,
           duration: 1
         };
       });
 
       // 4. Save to Supabase database
-      await supabase.from('events').insert(newEvents);
-      
-      // 5. Update UI state
-      const calName = comp.getFirstPropertyValue('x-wr-calname') || url;
+      const { data, error } = await supabase.from('events').insert(newEvents).select();
+
+      if (error) {
+        console.error("Supabase error inserting events:", error);
+        alert(`Database error: ${error.message}`);
+        return false;
+      }
+
+      // 5. Update React UI State for events AND calendars
+      const importedData = data && data.length > 0 ? data : newEvents;
+      setEvents(prev => [...prev, ...importedData]);
+
+      const calName = comp.getFirstPropertyValue('x-wr-calname') || 'External Calendar';
       setCalendars(prev => [...prev, { id: newCalId, name: calName, memberId, lastSynced: 'Just now' }]);
       
-      alert(`Success! Imported ${newEvents.length} events.`);
+      alert(`Success! Imported ${importedData.length} events.`);
       return true; 
       
     } catch (error) {
       console.error("Calendar import failed:", error);
-      alert("Could not import calendar. Ensure the iCloud link is public.");
+      alert("Could not import calendar. Ensure the calendar link is public and valid.");
       return false;
     }
   };
+
   const handleDeleteCalendar = (id) => {
     setCalendars(prev => prev.filter(c => c.id !== id));
     events.filter(e => e.id.includes(id)).forEach(e => handleDeleteEvent(e.id));
@@ -669,62 +697,16 @@ const handleAddCalendar = async (url, memberId) => {
   };
 
   const handleAddMember = async (name, role, selectedColor) => {
-  // 1. Package the exact new member data
-  const newMember = { id: Date.now().toString(), name, role, ...selectedColor };
-  
-  // 2. Update the local screen instantly
-  setMembers(prev => [...prev, newMember]);
-  
-  // 3. Save it straight to the Supabase cloud
-  await supabase.from('members').insert([newMember]);
-};
+    const newMember = { id: Date.now().toString(), name, role, ...selectedColor };
+    setMembers(prev => [...prev, newMember]);
+    await supabase.from('members').insert([newMember]);
+  };
 
-const handleDeleteMember = async (memberId) => {
-  // 1. Remove from local screen (including linked events)
-  setMembers(prev => prev.filter(m => m && m.id !== memberId));
-  events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
-  
-  // 2. Delete from the Supabase cloud
-  await supabase.from('members').delete().eq('id', memberId);
-};
-const handleImportWebcal = async (webcalUrl, memberId) => {
-  try {
-    // 1. Convert link and route through a proxy to bypass CORS
-    const httpsUrl = webcalUrl.replace('webcal://', 'https://').replace('webcals://', 'https://');
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(httpsUrl)}`;
-    
-    // 2. Fetch and parse the calendar data
-    const response = await fetch(proxyUrl);
-    const icsData = await response.text();
-    const jcalData = ICAL.parse(icsData);
-    const comp = new ICAL.Component(jcalData);
-    const vevents = comp.getAllSubcomponents('vevent');
-    
-    // 3. Transform data to match your Supabase columns
-    const newEvents = vevents.map(vevent => {
-      const event = new ICAL.Event(vevent);
-      const startDate = event.startDate ? event.startDate.toJSDate() : new Date();
-      
-      return {
-        id: `webcal-${event.uid || Date.now() + Math.random()}`,
-        title: event.summary || 'Imported Event',
-        date: startDate.toISOString().split('T')[0],
-        location: event.location || '',
-        memberId: memberId,
-        start: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        duration: '1'
-      };
-    });
-
-    // 4. Save to Supabase
-    await supabase.from('events').insert(newEvents);
-    alert(`Success! Imported ${newEvents.length} events.`);
-    
-  } catch (error) {
-    console.error("Calendar import failed:", error);
-    alert("Could not import calendar. Make sure the link is public and valid.");
-  }
-};
+  const handleDeleteMember = async (memberId) => {
+    setMembers(prev => prev.filter(m => m && m.id !== memberId));
+    events.filter(e => e && e.memberId === memberId).forEach(e => handleDeleteEvent(e.id));
+    await supabase.from('members').delete().eq('id', memberId);
+  };
   const handleCreateEvent = async (newEvent) => {
     const eventToSave = { ...newEvent, id: newEvent.id || `e-${Date.now()}` };
     setEvents(prev => [...prev, eventToSave]); // Show instantly
