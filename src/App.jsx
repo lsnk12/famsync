@@ -557,21 +557,22 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
 
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
-    // 1. Fetch Events
-const fetchEvents = async () => {
+    // 1. Fetch Events (Bulletproof mapping)
+    const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
       if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          memberId: String(e.memberId || ""),
-          // Convert the database text back into numbers for the timeline calculation
+          // Catch all possible API casings and force to String
+          memberId: String(e.memberId || e.member_id || e.memberid || ""),
           start: Number(e.start),
           duration: Number(e.duration || 1)
         }));
         setEvents(formattedData);
       }
     };
-    // 2. Fetch Members and format IDs
+
+    // 2. Fetch Members (Force IDs to String)
     const fetchMembers = async () => {
       const { data, error } = await supabase.from('members').select('*');
       if (data && data.length > 0) {
