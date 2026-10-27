@@ -558,24 +558,30 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
     // 1. Fetch Events
-  const fetchEvents = async () => {
+    const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
-      if (data && data.length > 0) {
+      if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          // Map snake_case database column to React's camelCase state
           memberId: String(e.memberId || e.member_id),
           start: Number(e.start),
-          duration: Number(e.duration)
+          duration: Number(e.duration || 1)
         }));
         setEvents(formattedData);
       }
     };
 
-    // 2. Fetch Members
+    // 2. Fetch Members and format IDs
     const fetchMembers = async () => {
       const { data, error } = await supabase.from('members').select('*');
-      if (data && data.length > 0) setMembers(data);
+      if (data && data.length > 0) {
+        // Force member IDs to strings so they match event IDs exactly
+        const formattedMembers = data.map(m => ({
+          ...m,
+          id: String(m.id)
+        }));
+        setMembers(formattedMembers);
+      }
     };
 
     fetchEvents();
