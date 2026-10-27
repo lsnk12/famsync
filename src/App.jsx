@@ -624,39 +624,6 @@ return () => {
     };
   }, []);
 
-  // --- PADLOCK SCREEN (Paste here) ---
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-sm w-full text-center">
-          <div className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">FamSync</h2>
-          <p className="text-slate-500 mb-6">Enter family PIN to continue</p>
-          <form onSubmit={handlePinSubmit}>
-            <input
-              type="password"
-              pattern="[0-9]*"
-              inputMode="numeric"
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-              className="w-full text-center text-2xl tracking-[0.5em] p-4 rounded-xl bg-slate-100 border-none outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
-              placeholder="••••"
-              autoFocus
-            />
-            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl hover:bg-indigo-700 transition-colors">
-              Unlock
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-  // -----------------------------------
-
   const safeEvents = Array.isArray(events) ? events : [];
   const dayEvents = safeEvents.filter(e => e && e.date === currentDate);
   const freeTime = findFamilyFreeTime(dayEvents);
@@ -844,7 +811,38 @@ const handleCreateEvent = async (newEvent) => {
   };
 
   const displayDate = new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
+  // --- PADLOCK SCREEN (Paste here) ---
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-sm w-full text-center">
+          <div className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">FamSync</h2>
+          <p className="text-slate-500 mb-6">Enter family PIN to continue</p>
+          <form onSubmit={handlePinSubmit}>
+            <input
+              type="password"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              className="w-full text-center text-2xl tracking-[0.5em] p-4 rounded-xl bg-slate-100 border-none outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+              placeholder="••••"
+              autoFocus
+            />
+            <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl hover:bg-indigo-700 transition-colors">
+              Unlock
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+  // -----------------------------------
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
       <nav className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-wrap gap-3 items-center justify-between sticky top-0 z-40">
