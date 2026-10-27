@@ -557,14 +557,19 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
 
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
-    // 1. Fetch Events (Bulletproof mapping)
     const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
+      
+      if (error) {
+        console.error("Fetch Events Error:", error);
+        alert(`Failed to load events: ${error.message}`);
+        return;
+      }
+
       if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          // Catch all possible API casings and force to String
-          memberId: String(e.memberId || e.member_id || e.memberid || ""),
+          memberId: String(e.memberId || ""),
           start: Number(e.start),
           duration: Number(e.duration || 1)
         }));
@@ -572,15 +577,17 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
       }
     };
 
-    // 2. Fetch Members (Force IDs to String)
     const fetchMembers = async () => {
       const { data, error } = await supabase.from('members').select('*');
+      
+      if (error) {
+        console.error("Fetch Members Error:", error);
+        alert(`Failed to load members: ${error.message}`);
+        return;
+      }
+
       if (data && data.length > 0) {
-        // Force member IDs to strings so they match event IDs exactly
-        const formattedMembers = data.map(m => ({
-          ...m,
-          id: String(m.id)
-        }));
+        const formattedMembers = data.map(m => ({ ...m, id: String(m.id) }));
         setMembers(formattedMembers);
       }
     };
@@ -588,7 +595,6 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
     fetchEvents();
     fetchMembers();
 
-    // 3. Listen for live changes on BOTH tables
     const channel = supabase
       .channel('realtime-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
