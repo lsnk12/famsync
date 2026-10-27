@@ -558,19 +558,18 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
     // 1. Fetch Events
-    const fetchEvents = async () => {
+  const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
       if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          memberId: String(e.memberId || e.member_id),
+          memberId: String(e.memberId),
           start: Number(e.start),
           duration: Number(e.duration || 1)
         }));
         setEvents(formattedData);
       }
     };
-
     // 2. Fetch Members and format IDs
     const fetchMembers = async () => {
       const { data, error } = await supabase.from('members').select('*');
@@ -722,11 +721,10 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('members').delete().eq('id', memberId);
   };
 
- const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
+const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
     const updated = { ...events.find(e => e.id === eventId), memberId: targetMemberId, start: newStart };
     setEvents(prev => prev.map(e => e && e.id === eventId ? updated : e));
-    // Send update as snake_case
-    await supabase.from('events').update({ member_id: targetMemberId, start: newStart }).eq('id', eventId);
+    await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
   };
 const handleSaveEvent = async (eventForm) => {
     const dbEvent = {
@@ -734,7 +732,7 @@ const handleSaveEvent = async (eventForm) => {
       title: eventForm.title || 'Untitled Event',
       date: eventForm.date,
       location: eventForm.location || '',
-      member_id: String(eventForm.memberId || eventForm.member_id), // Send as snake_case
+      memberId: String(eventForm.memberId),
       start: Number(eventForm.start),
       duration: Number(eventForm.duration || 1)
     };
@@ -752,7 +750,7 @@ const handleSaveEvent = async (eventForm) => {
       title: newEvent.title || 'Untitled Event',
       date: newEvent.date,
       location: newEvent.location || '',
-      member_id: String(newEvent.memberId || newEvent.member_id), // Send as snake_case
+      memberId: String(newEvent.memberId),
       start: Number(newEvent.start),
       duration: Number(newEvent.duration || 1)
     };
@@ -766,10 +764,9 @@ const handleSaveEvent = async (eventForm) => {
     }
 
     if (data && data.length > 0) {
-      // Map returned data back to camelCase for React
       const formattedData = data.map(e => ({
         ...e,
-        memberId: String(e.member_id || e.memberId),
+        memberId: String(e.memberId),
         start: Number(e.start),
         duration: Number(e.duration || 1)
       }));
