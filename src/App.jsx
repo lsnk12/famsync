@@ -563,6 +563,8 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
       if (data && data.length > 0) {
         const formattedData = data.map(e => ({
           ...e,
+          // Map snake_case database column to React's camelCase state
+          memberId: String(e.memberId || e.member_id),
           start: Number(e.start),
           duration: Number(e.duration)
         }));
