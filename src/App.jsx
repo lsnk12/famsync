@@ -555,21 +555,24 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
   const [shareModalEvent, setShareModalEvent] = useState(null);
   const [editModalEvent, setEditModalEvent] = useState(null);
 
- // REAL-TIME SUPABASE CLOUD SYNC LOGIC
+// REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
     const fetchEvents = async () => {
-      const { data, error } = await supabase.from('events').select('*');
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error("Fetch Events Error:", error);
-        alert(`Failed to load events: ${error.message}`);
         return;
       }
 
       if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          memberId: String(e.memberId || ""),
+          memberId: String(e.memberId || e.member_id || "").trim(),
+          date: String(e.date || "").trim().split('T')[0],
           start: Number(e.start),
           duration: Number(e.duration || 1)
         }));
@@ -579,15 +582,8 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
 
     const fetchMembers = async () => {
       const { data, error } = await supabase.from('members').select('*');
-      
-      if (error) {
-        console.error("Fetch Members Error:", error);
-        alert(`Failed to load members: ${error.message}`);
-        return;
-      }
-
       if (data && data.length > 0) {
-        const formattedMembers = data.map(m => ({ ...m, id: String(m.id) }));
+        const formattedMembers = data.map(m => ({ ...m, id: String(m.id).trim() }));
         setMembers(formattedMembers);
       }
     };
@@ -598,7 +594,7 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
     const channel = supabase
       .channel('realtime-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-        fetchEvents();
+        setTimeout(fetchEvents, 500); 
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => {
         fetchMembers();
@@ -757,37 +753,29 @@ const handleCreateEvent = async (newEvent) => {
     const dbEvent = {
       id: newEvent.id || crypto.randomUUID(),
       title: newEvent.title || 'Untitled Event',
-      date: newEvent.date,
+      date: String(newEvent.date).trim(),
       location: newEvent.location || '',
-      memberId: String(newEvent.memberId),
-      // Schema says text, so we strictly send Strings
+      memberId: String(newEvent.memberId).trim(),
       start: String(newEvent.start),
       duration: String(newEvent.duration || 1)
     };
 
-    const { data, error } = await supabase.from('events').insert([dbEvent]).select();
+    // 1. Optimistic Update: Instantly force the event onto the screen so it cannot disappear
+    const optimisticEvent = {
+      ...dbEvent,
+      start: Number(dbEvent.start),
+      duration: Number(dbEvent.duration)
+    };
+    setEvents(prev => [...prev.filter(e => e.id !== dbEvent.id), optimisticEvent]);
+
+    // 2. Save quietly in the background
+    const { error } = await supabase.from('events').insert([dbEvent]);
     
     if (error) {
       console.error("Database save failed:", error);
       alert(`Error saving event: ${error.message}`); 
-      return;
-    }
-
-    if (data && data.length > 0) {
-      const formattedData = data.map(e => ({
-        ...e,
-        memberId: String(e.memberId),
-        start: Number(e.start),
-        duration: Number(e.duration || 1)
-      }));
-      setEvents(prev => {
-        // Filter out any duplicates before appending the new confirmed data
-        const cleanPrev = prev.filter(p => !data.some(d => d.id === p.id));
-        return [...cleanPrev, ...formattedData];
-      });
     }
   };
-
   const handleDeleteEvent = async (eventId) => {
     setEvents(prev => prev.filter(e => e && e.id !== eventId));
     await supabase.from('events').delete().eq('id', eventId);
