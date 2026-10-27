@@ -722,19 +722,19 @@ const handleAddCalendar = async (url, memberId) => {
     await supabase.from('members').delete().eq('id', memberId);
   };
 
-  const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
+ const handleMoveEvent = async (eventId, targetMemberId, newStart) => {
     const updated = { ...events.find(e => e.id === eventId), memberId: targetMemberId, start: newStart };
     setEvents(prev => prev.map(e => e && e.id === eventId ? updated : e));
-    await supabase.from('events').update({ memberId: targetMemberId, start: newStart }).eq('id', eventId);
+    // Send update as snake_case
+    await supabase.from('events').update({ member_id: targetMemberId, start: newStart }).eq('id', eventId);
   };
-
 const handleSaveEvent = async (eventForm) => {
     const dbEvent = {
       id: eventForm.id || `evt-${Date.now()}`,
       title: eventForm.title || 'Untitled Event',
       date: eventForm.date,
       location: eventForm.location || '',
-      memberId: String(eventForm.memberId || eventForm.member_id),
+      member_id: String(eventForm.memberId || eventForm.member_id), // Send as snake_case
       start: Number(eventForm.start),
       duration: Number(eventForm.duration || 1)
     };
@@ -746,13 +746,13 @@ const handleSaveEvent = async (eventForm) => {
       alert(`Database Save Error: ${error.message}`);
     }
   };
-  const handleCreateEvent = async (newEvent) => {
+ const handleCreateEvent = async (newEvent) => {
     const dbEvent = {
       id: newEvent.id || crypto.randomUUID(),
       title: newEvent.title || 'Untitled Event',
       date: newEvent.date,
       location: newEvent.location || '',
-      memberId: String(newEvent.memberId || newEvent.member_id),
+      member_id: String(newEvent.memberId || newEvent.member_id), // Send as snake_case
       start: Number(newEvent.start),
       duration: Number(newEvent.duration || 1)
     };
@@ -766,9 +766,14 @@ const handleSaveEvent = async (eventForm) => {
     }
 
     if (data && data.length > 0) {
-      setEvents(prev => [...prev, ...data]);
-    } else {
-      alert("Supabase didn't return an error, but didn't save the data either. Check your RLS policies!");
+      // Map returned data back to camelCase for React
+      const formattedData = data.map(e => ({
+        ...e,
+        memberId: String(e.member_id || e.memberId),
+        start: Number(e.start),
+        duration: Number(e.duration || 1)
+      }));
+      setEvents(prev => [...prev, ...formattedData]);
     }
   };
 
