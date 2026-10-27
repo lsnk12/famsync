@@ -558,12 +558,13 @@ const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().sp
  // REAL-TIME SUPABASE CLOUD SYNC LOGIC
   useEffect(() => {
     // 1. Fetch Events
-  const fetchEvents = async () => {
+const fetchEvents = async () => {
       const { data, error } = await supabase.from('events').select('*');
       if (data) {
         const formattedData = data.map(e => ({
           ...e,
-          memberId: String(e.memberId),
+          memberId: String(e.memberId || ""),
+          // Convert the database text back into numbers for the timeline calculation
           start: Number(e.start),
           duration: Number(e.duration || 1)
         }));
@@ -733,8 +734,9 @@ const handleSaveEvent = async (eventForm) => {
       date: eventForm.date,
       location: eventForm.location || '',
       memberId: String(eventForm.memberId),
-      start: Number(eventForm.start),
-      duration: Number(eventForm.duration || 1)
+      // Schema says text, so we strictly send Strings
+      start: String(eventForm.start),
+      duration: String(eventForm.duration || 1)
     };
 
     const { error } = await supabase.from('events').upsert([dbEvent]);
@@ -744,15 +746,16 @@ const handleSaveEvent = async (eventForm) => {
       alert(`Database Save Error: ${error.message}`);
     }
   };
- const handleCreateEvent = async (newEvent) => {
+const handleCreateEvent = async (newEvent) => {
     const dbEvent = {
       id: newEvent.id || crypto.randomUUID(),
       title: newEvent.title || 'Untitled Event',
       date: newEvent.date,
       location: newEvent.location || '',
       memberId: String(newEvent.memberId),
-      start: Number(newEvent.start),
-      duration: Number(newEvent.duration || 1)
+      // Schema says text, so we strictly send Strings
+      start: String(newEvent.start),
+      duration: String(newEvent.duration || 1)
     };
 
     const { data, error } = await supabase.from('events').insert([dbEvent]).select();
@@ -770,7 +773,11 @@ const handleSaveEvent = async (eventForm) => {
         start: Number(e.start),
         duration: Number(e.duration || 1)
       }));
-      setEvents(prev => [...prev, ...formattedData]);
+      setEvents(prev => {
+        // Filter out any duplicates before appending the new confirmed data
+        const cleanPrev = prev.filter(p => !data.some(d => d.id === p.id));
+        return [...cleanPrev, ...formattedData];
+      });
     }
   };
 
